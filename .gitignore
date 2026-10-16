@@ -1,0 +1,25 @@
+# Virtual environment
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# JAX
+.jax_cache/
+
+# Editor and OS
+.vscode/
+.idea/
+.DS_Store
+
+# Temporary files
+*.log
+*.tmp
+
+# Experimental results (keep directories, ignore outputs)
+results/*
+!results/.gitkeep
