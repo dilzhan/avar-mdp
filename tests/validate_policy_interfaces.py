@@ -31,7 +31,7 @@ _, baseline_policy, _, _, _ = run_adp(
     rn_models=rn_models,
     rn_phi=phi,
     key=random.PRNGKey(1),
-    n_iterations=2,
+    n_episodes=2,
     **MODEL,
 )
 

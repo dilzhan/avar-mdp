@@ -3,7 +3,7 @@ from collections.abc import Callable
 import jax
 import jax.numpy as jnp
 from jax import random
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, Int
 
 from .evaluation import make_noise_paths
 from .model import (
@@ -199,11 +199,11 @@ def run_adp(
     actions: Float[Array, " n_actions"] = ACTIONS,
     noise: Float[Array, " n_samples"] = NOISE,
     probabilities: Float[Array, " n_samples"] = PROBABILITIES,
-    n_iterations: int = 1000,
+    n_episodes: int = 1000,
     initializer: Callable | None = None,
     tol: float | None = None,
     x0: float = 1.0,
-) -> tuple[Callable, Callable, dict, Float[Array, " n_steps"], int]:
+) -> tuple[Callable, Callable, dict, Float[Array, " n_steps"], Int[Array, " n_steps"]]:
 
     actions = jnp.asarray(actions)
     noise = jnp.asarray(noise)
@@ -407,10 +407,11 @@ def run_adp(
 
         return jnp.asarray(actions).reshape(x.shape)
 
-    history = []
-    iteration = 0
+    root_history = []
+    backup_history = []
+    episode = 0
 
-    while iteration < n_iterations:
+    while episode < n_episodes:
         _, key = value(
             0,
             jnp.asarray(x0),
@@ -419,13 +420,20 @@ def run_adp(
         )
 
         current_value = values[state_key(0, x0, -eta)]
-        history.append(current_value)
+        root_history.append(current_value)
+        backup_history.append(n_backups)
 
-        if tol is not None and len(history) >= 10:
-            recent = jnp.asarray(history[-10:])
+        if tol is not None and len(root_history) >= 10:
+            recent = jnp.asarray(root_history[-10:])
             if jnp.max(jnp.abs(jnp.diff(recent))) < tol:
                 break
 
-        iteration += 1
+        episode += 1
 
-    return approximate_value, policy, values, jnp.asarray(history), n_backups
+    return (
+        approximate_value,
+        policy,
+        values,
+        jnp.asarray(root_history),
+        jnp.asarray(backup_history),
+    )

@@ -19,7 +19,3 @@ __pycache__/
 # Temporary files
 *.log
 *.tmp
-
-# Experimental results (keep directories, ignore outputs)
-results/*
-!results/.gitkeep
