@@ -1,0 +1,20 @@
+\section{Related work}
+\label{sec:related}
+
+\subsection{AVaR control and approximate dynamic programming}
+\label{rel:avar-mdp}
+
+The optimization representation of AVaR introduced by \cite{rockafellar-2002} provides a foundation for risk-averse stochastic optimization. For Markov decision processes, applying AVaR to the cumulative cost generally prevents direct Bellman recursion on the original state space. \cite{bauerle-2011} addressed this problem by introducing an augmented state that tracks the remaining risk threshold. Their formulation also establishes the affine structure of the value function after the threshold has been crossed. Under nonnegative costs, this corresponds to the risk-neutral continuation used in this paper.
+
+Several other approaches have been developed for risk-averse sequential decision making. \cite{chow-2015} proposed an augmented dynamic programming formulation based on the dual representation of AVaR, together with approximate value iteration. \cite{jiang-2018} studied risk-averse approximate dynamic programming with quantile-based risk measures and importance sampling. However, their recursively defined risk criteria differ from the static AVaR of cumulative cost considered here. More recently, \cite{muni-2026} developed an alternative Bellman formulation for static AVaR control based on reward redistribution.
+
+These methods demonstrate that risk-averse control can be addressed through different dynamic programming formulations and approximation techniques. In the present work, we follow the augmented-state approach of B\"{a}uerle and Ott and exploit its established structural properties. Our focus is on approximating the remaining difficult region efficiently by allocating a limited number of Bellman backups to selected states.
+
+\subsection{Gaussian processes and decision-aware sampling}
+\label{rel:gp}
+
+Gaussian processes have been widely used for value-function approximation in reinforcement learning. \cite{engel-2005} developed Gaussian-process methods for value and action-value estimation, while \cite{grande-2014} studied sample-efficient reinforcement learning using GPs. Unlike these approaches, our method uses GPs to approximate Q-functions from model-based Bellman targets in a backward finite-horizon recursion. The GP predictions provide both approximate Q-values and uncertainty estimates, which we use to guide the selection of Bellman updates.
+
+Selective allocation of computational effort is also an established idea in approximate dynamic programming. \cite{wingate-2005} studied prioritization methods for Bellman updates, while \cite{ryzhov-2019} developed a Bayesian exploration framework for approximate dynamic programming. These methods show that computational resources can be allocated according to the expected usefulness of additional information. Our approach follows a similar principle but focuses specifically on uncertainty about the optimal action rather than value-function accuracy alone.
+
+The motivation for decision-aware sampling is closely related to the action-gap phenomenon studied by \cite{farahmand-2011}, which explains why approximation errors do not necessarily change the optimal action. A related approach was developed by \cite{cakmak-2024}, who used Gaussian processes for contextual ranking and selection under a limited simulation budget. Our decision score follows the same general idea by measuring uncertainty in the ordering of the two actions with the lowest predicted Q-values. We adapt this criterion to select Bellman backups in the difficult region of an augmented static-AVaR MDP. We also investigate reachability and tail relevance, which are related to importance sampling in risk-averse ADP \citep{jiang-2018} and tail-focused sampling for AVaR evaluation \citep{bourigault-2026}.

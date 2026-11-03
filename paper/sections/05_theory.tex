@@ -1,0 +1,667 @@
+\section{Theoretical analysis}
+\label{sec:theory}
+ 
+\subsection{Preliminaries and assumptions}
+\label{theory:preliminaries}
+
+We consider the finite-horizon MDP and its augmented-state
+formulation introduced in Section~\ref{sec:problem}.
+Throughout this section, $V_t$ and $\hat{V}_t$ denote the
+exact and approximate augmented-state value functions,
+respectively. Similarly, $V_t^{\text{RN}}$ and
+$\hat{V}_t^{\text{RN}}$ denote their risk-neutral counterparts.
+
+The exact value and Q-functions are defined with respect
+to the original continuous disturbance distribution.
+The local approximation errors also account for numerical
+integration errors introduced by the algorithms.
+
+We make the following assumptions:
+\begin{enumerate}
+	\item \textbf{Nonnegative costs.}
+	The stage and terminal costs are nonnegative
+	\begin{equation*}
+		c_t(x,a) \geq 0, \qquad c_T(x) \geq 0.
+	\end{equation*}
+	
+	\item \textbf{Well-defined values.}
+	All expectations appearing in the Bellman equations
+	are finite on the states considered in the analysis.
+	
+	\item \textbf{Threshold domain.}
+	The outer optimization is restricted to a compact
+	interval $\mathcal{I}_\eta \subset \mathbb R$,
+	assumed to contain at least one global optimal threshold
+	$\eta^*$. The numerical optimization uses a
+	finite candidate set $\mathcal{H} \subset \mathcal{I}_\eta$.
+\end{enumerate}
+
+For each $t$, let $\mathcal{Z}_t$ denote the set of augmented states $(x,y)$ reachable from $(x_0,-\eta)$, with $\eta\in\mathcal{I}_{\eta}$, under admissible action sequences and noise realizations.
+
+We partition this domain into
+\begin{equation}
+	\mathcal{Z}_t^+ = \{ (x, y) \in \mathcal{Z}_t:\ y \geq 0 \} \quad \text{and} \quad \mathcal{Z}_t^- = \{ (x, y) \in \mathcal{Z}_t:\ y < 0 \}
+	\label{possible-state-decomposition}
+\end{equation}
+
+For any function $f$ defined on a domain $D$, we use the supremum norm
+\begin{equation}
+	\|f\|_{\infty,D} = \sup_{z\in D}|f(z)|.
+	\notag
+	\label{supnorm}
+\end{equation}
+
+We define the approximation errors in the two regions as
+\begin{equation}
+	\epsilon_t^+ = \| \hat{V}_t - V_t \|_{\infty, \mathcal{Z}_t^+}, \qquad
+	\epsilon_t^- = \| \hat{V}_t - V_t \|_{\infty, \mathcal{Z}_t^-}.
+	\label{decomposed-errors}
+\end{equation}
+
+We assume that the local approximation errors defined below are uniformly bounded over their respective domains. These domains may be unbounded, and such bounds are not guaranteed by GP regression. Therefore, the theoretical results are conditional on this assumption. For an empty domain we take the error to be zero.
+
+The resulting bounds are deterministic and conditional on
+the fitted approximation functions; no probabilistic
+guarantees on GP approximation errors are assumed.
+
+By the risk-neutral decomposition and the approximation rule used by the proposed method,
+\begin{equation}
+	V_t(x,y)=y+V_t^{\text{RN}}(x),
+	\qquad
+	\hat{V}_t(x,y)=y+\hat{V}_t^{\text{RN}}(x).
+	\label{value-rn-decomposition}
+\end{equation}
+
+Consequently,
+\begin{equation}
+	\epsilon_t^+ = \sup_{x \in \X_t^+} \left| \hat{V}_t^{\text{RN}}(x) - V_t^{\text{RN}}(x) \right|,
+	\notag
+	\label{positive-error}
+\end{equation}
+where
+\begin{equation}
+	\X_t^+ = \{ x:\ \exists y \geq 0, (x, y) \in \mathcal{Z}_t \}
+	\notag
+	\label{positive-x-state}
+\end{equation}
+
+Since the proposed method uses the exact terminal value function, we have
+\begin{equation}
+	\epsilon_T^+ = \epsilon_T^- = 0.
+	\label{terminal-error}
+\end{equation}
+
+\subsection{Augmented-state approximation error}
+\label{theory:approximation-error}
+
+\subsubsection{Risk-neutral region ($y \geq 0$)}
+\label{theory:rn-error}
+
+Let us recall and define the main quantities that will be used in this paragraph
+\begin{itemize}
+	\item Risk-neutral Q-function \eqref{q-rn-bellman}
+	\begin{equation*}
+		Q_t^{\text{RN}}(x, a) = c_t(x, a) + \EE \left[ V_{t+1}^{\text{RN}} (x_{t+1}) \mid x_t = x, a_t = a \right]
+	\end{equation*}
+	\item Bellman target for Q-function approximation using approximate value function
+	\begin{equation*}
+		\tilde{Q}_t^{\text{RN}}(x, a) =  c_t(x, a) + \EE \left[ \hat{V}_{t+1}^{\text{RN}}(x_{t+1}) \mid x_t = x, a_t = a \right]
+	\end{equation*}
+	\item Recursive Q-function approximation \eqref{q-rn-approx-bellman}
+	\begin{equation*}
+		\hat{Q}_t^{\text{RN}}(x, a) \approx \tilde{Q}_t^{\text{RN}}(x, a)
+	\end{equation*}
+	\item Local approximation error
+	\begin{equation*}
+		\beta_t^{\text{RN}} = \sup_{\substack{x \in \X_t^+ \\ a \in \A}} \left| \hat{Q}_t^{\text{RN}}(x, a) - \tilde{Q}_t^{\text{RN}}(x, a) \right|
+	\end{equation*}
+\end{itemize}
+
+Therefore, the one-step risk-neutral approximation bound is
+\begin{equation}
+	\begin{array}{rl}
+		\left| \hat{Q}_t^{\text{RN}}(x, a) - Q_t^{\text{RN}}(x, a) \right| & \leq \underbrace{\left| \hat{Q}_t^{\text{RN}}(x, a) - \tilde{Q}_t^{\text{RN}}(x, a) \right|}_{\leq \beta_t^{\text{RN}}} + \underbrace{\left| \tilde{Q}_t^{\text{RN}}(x, a) - Q_t^{\text{RN}}(x, a) \right|}_{\leq \epsilon_{t+1}^+} \\
+		& \leq \beta_t^{\text{RN}} + \epsilon_{t+1}^+
+	\end{array}
+	\label{one-step-bound-rn}
+\end{equation}
+
+The first term on the right-hand side of \eqref{one-step-bound-rn} is bounded by the local approximation error by definition of $\beta_t^{\text{RN}}$, the second part is justified below:
+\begin{equation}
+	\begin{array}{rl}
+		\left| \tilde{Q}_t^{\text{RN}}(x, a) - Q_t^{\text{RN}}(x, a) \right| & \displaystyle \leq \left| \EE \left[ \hat{V}_{t+1}^{\text{RN}}(x_{t+1}) \mid x_t = x, a_t = a \right] - \EE \left[ V_{t+1}^{\text{RN}}(x_{t+1}) \mid x_t = x, a_t = a \right] \right| \\
+		& = \left| \EE \left[ \hat{V}_{t+1}^{\text{RN}}(x_{t+1}) - V_{t+1}^{\text{RN}}(x_{t+1}) \mid x_t = x, a_t = a \right] \right| \\
+		& \displaystyle \leq \EE \left[ \underbrace{\left| \hat{V}_{t+1}^{\text{RN}}(x_{t+1}) - V_{t+1}^{\text{RN}}(x_{t+1}) \right|}_{ \leq \epsilon_{t+1}^+} \mid x_t = x, a_t = a \right] \\
+		& \leq \epsilon_{t+1}^+,
+	\end{array}
+	\notag
+	\label{rn-continuation-q-error}
+\end{equation}
+the second-to-last inequality is due to Jensen's inequality. The final inequality follows because for any $x \in \X_t^+$ and $a \in \A$, the corresponding successor states belong to
+$\X_{t+1}^+$.
+
+The corresponding error in the value function is, then
+\begin{equation}
+	\begin{array}{rl}
+		\left| \hat{V}_t^{\text{RN}}(x) - V_t^{\text{RN}}(x) \right| & \displaystyle = \left| \min_{a \in \A} \hat{Q}_t^{\text{RN}}(x, a) - \min_{a \in \A} Q_t(x, a) \right| \\
+		& \displaystyle \leq  \max_{a \in \A} \left| \hat{Q}_t^{\text{RN}}(x, a) - Q_t^{\text{RN}}(x, a) \right| \\
+		& \displaystyle \leq \beta_t^{\text{RN}} + \epsilon_{t+1}^+.
+	\end{array}
+	\notag
+	\label{rn-one-step-value}
+\end{equation}
+
+Since the inequality above holds for any $x \in \X_t^+$, we can deduce
+\begin{equation*}
+	\epsilon_t^+ \leq \beta_t^{\text{RN}} + \epsilon_{t+1}^+
+\end{equation*}
+
+Using the fact that we use the exact terminal value at time $T$ (stated in \eqref{terminal-error}) and the recursive inequality above we can conclude
+\begin{equation}
+	\epsilon_t^+ \leq \sum_{s=t}^{T-1} \beta_s^{\text{RN}}
+\end{equation}
+
+\subsubsection{Difficult region ($y < 0$)}
+\label{theory:negative-error}
+
+As in the previous case, we define the quantities needed for the analysis:
+\begin{itemize}
+	\item Risk-sensitive Q-function \eqref{q-function}
+	\begin{equation*}
+		Q_t(x, y, a) = \EE \left[ V_{t+1}(x_{t+1}, y_{t+1}) \mid x_t = x, y_t = y, a_t = a \right]
+	\end{equation*}
+	\item Bellman target for the Q-function
+	\begin{equation*}
+		\tilde{Q}_t(x, y, a) = \EE \left[ \hat{V}_{t+1}(x_{t+1}, y_{t+1}) \mid x_t = x, y_t = y, a_t = a \right]
+	\end{equation*}
+	\item Q-function approximation using GP predictive mean \eqref{gp-predictive-mean} for $0 < t < T$
+	\begin{equation*}
+		\hat{Q}_t(x, y, a) \approx \tilde{Q}_t(x, y, a).
+	\end{equation*}
+	\item Local approximation error
+	\begin{equation*}
+		\beta_t^- = \sup_{\substack{(x, y) \in \mathcal{Z}_t^- \\ a \in \A}} \left| \hat{Q}_t(x, y, a) - \tilde{Q}_t(x, y, a) \right|
+	\end{equation*}
+	\item Risk-neutral approximation error for $(x, y) \in \mathcal{Z}_t^-$
+	\begin{equation*}
+		\rho_t^- = \sup_{(x, y) \in \mathcal{Z}_t^-} \left| (y + \hat{V}_t^{\text{RN}}(x))_+ - (y + V_t^{\text{RN}}(x))_+ \right|.
+	\end{equation*}
+\end{itemize}
+
+At $t=0$, the approximate Q-function is evaluated directly as
+\begin{equation*}
+	\hat{Q}_0(x_0, -\eta, a) = \sum_{i=0}^{N_\xi} w_i
+	\hat{V}_1\left( f(x_0,a,\xi^{(i)}), -\eta+c_0(x_0,a) \right).
+\end{equation*}
+Therefore, $\beta_0^-$ contains only the numerical
+integration error relative to the continuous Bellman
+target $\tilde{Q}_0$ and does not contain GP regression error. The corresponding value function is calculated as
+\begin{equation}
+	\hat{V}_0(x, -\eta) = \min_{a \in \A} \hat{Q}_0(x, -\eta, a)
+	\notag
+	\label{root-value-approx},
+\end{equation}
+while the value functions for states $t=1, \dots, T-1$ are obtained using \eqref{gp-value-policy}.
+
+The risk-neutral error $\epsilon_t^+$ is defined only over $\X_t^+$, whereas the risk-neutral approximation is also used for states with $y<0$. Since their physical states $x$ may lie outside $\X_t^+$, we account for the corresponding proxy error separately through $\rho_t^-$.
+
+Since $y_{t+1}=y+c_t(x_t,a_t)$, the continuation error depends on whether the next state belongs to the risk-neutral or difficult region. Thus,
+\begin{equation}
+	\left| \tilde{Q}_t(x, y, a) - Q_t(x, y, a) \right| \leq \begin{cases}
+		\epsilon_{t+1}^+, & y + c_t(x, a) \geq 0 \\
+		\epsilon_{t+1}^-, & y + c_t(x, a) < 0
+	\end{cases}
+	\notag
+\end{equation}
+or, simpler,
+\begin{equation}
+	\left| \tilde{Q}_t(x, y, a) - Q_t(x, y, a) \right| \leq \max \{ \epsilon_{t+1}^+, \epsilon_{t+1}^- \}.
+	\notag
+	\label{difficult-continuation-q-error}
+\end{equation}
+
+Recall that we bound the value function approximation as
+\begin{equation*}
+	\hat{V}_t(x, y) = \max \left\{ \min_{a \in \A} \hat{Q}_t(x, y, a), \left( y + \hat{V}_t^{\text{RN}}(x) \right)_+ \right\}.
+\end{equation*}
+
+Let
+\begin{equation}
+	B_t(x,y)=(y+V_t^{\text{RN}}(x))_+,
+	\quad
+	\hat{B}_t(x,y)=(y+\hat{V}_t^{\text{RN}}(x))_+.
+	\notag
+	\label{rn-continuation}
+\end{equation}
+By Jensen's inequality, $B_t(x,y)\leq V_t(x,y)$, but this may not hold for $\hat{B}_t$. 
+
+For $1 \leq t < T$, since $B_t(x,y)\leq V_t(x,y)$ and the maximum operator is nonexpansive, the one-step value-function error is bounded by
+\begin{equation}
+	\left| \hat{V}_t(x, y) - V_t(x, y) \right| \leq \max \left\{ \beta_t^- + \max \{ \epsilon_{t+1}^+, \epsilon_{t+1}^- \}, \rho_t^- \right\}.
+	\label{difficult-one-step-value}
+\end{equation}
+
+At $t=0$, the same bound follows directly from the nonexpansiveness of the minimum operator, since no risk-neutral maximum is applied.
+
+Again, since the inequality above holds for an arbitrary state $(x_t, y_t) \in \mathcal{Z}_t^-$,
+\begin{equation*}
+	\epsilon_t^- \leq \max \left\{ \beta_t^- + \max \{ \epsilon_{t+1}^+, \epsilon_{t+1}^- \}, \rho_t^- \right\}.
+\end{equation*}
+
+\subsubsection{Combined error bound}
+\label{theory:combined-error}
+
+Combining the one-step approximation error bounds
+derived for the risk-neutral and difficult regions,
+we have
+\begin{equation}
+	\begin{array}{rl}
+		\epsilon_t^+
+		&\leq \beta_t^{\text{RN}}+\epsilon_{t+1}^+,\\[4pt]
+		\epsilon_t^-
+		&\leq \max\left\{
+		\beta_t^-+
+		\max\{\epsilon_{t+1}^+,\epsilon_{t+1}^-\},
+		\rho_t^-
+		\right\}.
+	\end{array}
+	\notag
+\end{equation}
+
+Taking the maximum of the two inequalities gives
+\begin{equation}
+	\begin{array}{rl}
+		\max\{\epsilon_t^+,\epsilon_t^-\}
+		&\displaystyle\leq
+		\max\left\{
+		\beta_t^{\text{RN}}+\epsilon_{t+1}^+,
+		\beta_t^-+\max\{\epsilon_{t+1}^+,\epsilon_{t+1}^-\},
+		\rho_t^-
+		\right\}\\
+		&\displaystyle\leq
+		\max\left\{
+		\beta_t^{\text{RN}}+
+		\max\{\epsilon_{t+1}^+,\epsilon_{t+1}^-\},
+		\beta_t^-+
+		\max\{\epsilon_{t+1}^+,\epsilon_{t+1}^-\},
+		\rho_t^-
+		\right\}\\
+		&\displaystyle\leq
+		\max\{\beta_t^{\text{RN}},\beta_t^-,\rho_t^-\}
+		+\max\{\epsilon_{t+1}^+,\epsilon_{t+1}^-\}.
+	\end{array}
+	\notag
+	\label{combined-one-step-error}
+\end{equation}
+
+The final inequality follows from the nonnegativity
+of the error bounds. Since the terminal value
+function is exact, we have
+$\epsilon_T^+=\epsilon_T^-=0$.
+Applying the recursive inequality backward we obtain
+\begin{equation}
+	\max\{\epsilon_t^+,\epsilon_t^-\}
+	\leq
+	\sum_{s=t}^{T-1}
+	\max\{\beta_s^{\text{RN}},\beta_s^-,\rho_s^-\}.
+	\notag
+	\label{combined-accumulated-error}
+\end{equation}
+
+By the partition of the augmented-state domain,
+\begin{equation}
+	\|\hat{V}_t-V_t\|_{\infty,\mathcal{Z}_t}
+	=\max\{\epsilon_t^+,\epsilon_t^-\}.
+	\notag
+\end{equation}
+
+Therefore, the total augmented-state approximation error bound is
+\begin{equation}
+	\|\hat{V}_t-V_t\|_{\infty,\mathcal{Z}_t}
+	\leq
+	\sum_{s=t}^{T-1}
+	\max\{\beta_s^{\text{RN}},\beta_s^-,\rho_s^-\}.
+	\label{total-augmented-error}
+\end{equation}
+
+
+\subsection{Amplification by the AVaR confidence level}
+\label{theory:amplification}
+
+Since
+\begin{equation}
+	J(\eta)
+	=
+	\eta
+	+
+	\frac{1}{1-\alpha}V_0(x_0,-\eta),
+	\notag
+	\label{avar-objective-theory}
+\end{equation}
+value-function approximation errors are amplified by
+\begin{equation}
+	\frac{1}{1-\alpha}.
+	\notag
+	\label{avar-amplification-factor}
+\end{equation}
+
+Thus, if
+\begin{equation}
+	\left|
+	\hat V_0(x_0,-\eta)
+	-
+	V_0(x_0,-\eta)
+	\right|
+	\le
+	\epsilon,
+	\notag
+	\label{initial-value-error}
+\end{equation}
+then
+\begin{equation}
+	\left|
+	\hat J(\eta)-J(\eta)
+	\right|
+	\le
+	\frac{\epsilon}{1-\alpha}.
+	\label{avar-objective-error}
+\end{equation}
+
+The error $\epsilon$ can be bounded using the combined augmented-state approximation error derived in Section~\ref{theory:combined-error}. The inequality shows that, for a fixed threshold $\eta$, the effect of value-function approximation error on the AVaR objective increases as $\alpha$ approaches one. Consequently, higher confidence levels require more accurate value-function approximations to maintain the same objective error bound.
+
+
+
+\subsection{Outer $\eta$ discretization error}
+\label{theory:outer-eta-error}
+
+As discussed in Section~\ref{sec:method}, the outer optimization is performed over a finite set of thresholds $\mathcal{H} \subset \mathcal{I}_\eta$. Suppose that $\mathcal{H}$ is a grid containing the endpoints of $\mathcal{I}_\eta$, with maximum spacing $h_\eta$.
+
+Let $\eta^*$ be a global optimal threshold assumed to belong to a continuous interval $\mathcal{I}_\eta$, and let $\eta_{\text{grid}}^*$ be the optimal threshold over the grid $\mathcal{H}$, evaluated using the exact objective $J$.
+
+As stated by \cite{bauerle-2011} (Theorem 3.5), the value function is 1-Lipschitz continuous with respect to $y$. So,
+\begin{equation}
+	|V_0(x_0,-\eta_1)-V_0(x_0,-\eta_2)|
+	\leq |\eta_1-\eta_2|.
+	\label{value-eta-lipschitz}
+\end{equation}
+
+Thus, the objective $J$ is Lipschitz continuous, with a Lipschitz constant
+\begin{equation}
+	\begin{array}{rl}
+		\left| J(\eta_1) - J(\eta_2) \right| &= \left| \left( \eta_1 + \frac{1}{1-\alpha} V_0(x_0, -\eta_1) \right) - \left( \eta_2 + \frac{1}{1-\alpha} V_0(x_0, -\eta_2) \right) \right| \\
+		&= \left| (\eta_1 - \eta_2) + \frac{1}{1-\alpha} (V_0(x_0, -\eta_1) - V_0(x_0, -\eta_2)) \right| \\
+		& \leq \underbrace{\left( 1 + \frac{1}{1-\alpha} \right)}_{L_{\eta}} |\eta_1 - \eta_2|
+	\end{array}
+	\label{eta-lipschitz-constant}
+\end{equation}
+
+The grid contains the endpoints of the interval $\mathcal{I}_{\eta}$, so there is a point $\eta' \in \mathcal{H}$ so that $|\eta' - \eta^*| \leq h_{\eta}/2$. Since $\eta_{\text{grid}}^*$ is optimal in $\mathcal{H}$,
+\begin{equation}
+	\begin{array}{rl}
+		J(\eta_{\text{grid}}^*)-J(\eta^*)
+		&\displaystyle\leq J(\eta')-J(\eta^*)\\[4pt]
+		&\displaystyle\leq L_\eta\frac{h_\eta}{2}.
+	\end{array}
+	\label{eta-grid-error}
+\end{equation}
+
+However, in our algorithms we use the approximate objective $\hat{J}$; therefore, the selected threshold is not guaranteed to be the exact optimal $\eta_{\text{grid}}^*$. Let us define
+\begin{equation}
+	\hat{\eta}_{\text{grid}} \in \arg\min_{\eta\in\mathcal{H}}\hat{J}(\eta).
+	\notag
+	\label{approx-eta-minimizer}
+\end{equation}
+
+Since $\hat{\eta}$ is optimal with respect to $\hat{J}$, we claim
+\begin{equation}
+	\hat{J}(\hat{\eta}_{\text{grid}}) \leq \hat{J}(\eta_{\text{grid}}^*)
+	\label{approx-eta-optimality}
+\end{equation}
+
+Let us define the uniform objective approximation error over the grid as $\delta$. Then, using results from Section~\ref{theory:amplification},
+\begin{equation}
+	\begin{array}{rl}
+		\delta & \displaystyle = \max_{\eta \in \mathcal{H}} |\hat{J}(\eta)-J(\eta)| \\
+		& \displaystyle = \max_{\eta \in \mathcal{H}} \left\{ \frac{1}{1-\alpha} \left| \hat{V}_0(x_0, -\eta) - V_0(x_0, -\eta) \right| \right\} \\
+		& \displaystyle \leq \frac{1}{1-\alpha} \| \hat{V}_0 - V_0 \|_{\infty, \mathcal{Z}_0}.
+	\end{array}
+	\label{eta-objective-approx-error}
+\end{equation}
+
+Using the optimality of $\hat\eta_{\text{grid}}$ with respect to $\hat J$, we have
+\begin{equation}
+	\begin{array}{rl}
+		\displaystyle
+		J(\hat\eta_{\text{grid}})
+		-J(\eta_{\text{grid}}^*) & \displaystyle =
+		\underbrace{\left[J(\hat\eta_{\text{grid}})
+		-\hat J(\hat\eta_{\text{grid}})\right]}_{\leq \delta \text{ by \eqref{eta-objective-approx-error}}}\\[4pt]
+		&\displaystyle\quad+
+		\underbrace{\left[\hat J(\hat\eta_{\text{grid}})
+		-\hat J(\eta_{\text{grid}}^*)\right]}_{\leq 0 \text{ by \eqref{approx-eta-optimality}}}\\[4pt]
+		&\displaystyle\quad+
+		\underbrace{\left[\hat J(\eta_{\text{grid}}^*)
+		-J(\eta_{\text{grid}}^*)\right]}_{\leq \delta \text{ by \eqref{eta-objective-approx-error}}}\\[4pt]
+		&\displaystyle\leq 2\delta,
+	\end{array}
+	\label{eta-selection-error}
+\end{equation}
+
+Combining the discretization and approximation errors we obtain
+\begin{equation}
+	\begin{array}{rl}
+		J(\hat{\eta}_{\text{grid}}) - J(\eta^*) & \displaystyle = \underbrace{\left[ J(\hat{\eta}_{\text{grid}}) - J(\eta_{\text{grid}}^*) \right]}_{\leq 2\delta \text{ by \eqref{eta-selection-error}}} + \underbrace{\left[ J(\eta_{\text{grid}}^*) - J(\eta^*) \right]}_{\leq L_{\eta}\frac{h_{\eta}}{2} \text{ by \eqref{eta-grid-error}}} \\
+		& \displaystyle \leq L_{\eta}\frac{h_{\eta}}{2} + 2\delta \\
+		& \displaystyle \leq L_{\eta}\frac{h_{\eta}}{2} + \frac{2}{1-\alpha} \| \hat{V}_0 - V_0 \|_{\infty, \mathcal{Z}_0}.
+	\end{array}
+	\label{eta-combined-error}
+\end{equation}
+The bound separates the error introduced by the finite threshold grid from the error caused by approximating the objective function. The latter can be bounded using the combined augmented-state approximation error derived in Section~\ref{theory:combined-error}.
+
+
+
+
+\subsection{Action-selection error and action gaps}
+\label{theory:action-gap}
+
+The relationship between Q-function approximation errors and
+optimal action selection was studied by \cite{farahmand-2011}
+through the action-gap phenomenon. The main observation is
+that correct action selection can be preserved despite
+approximation errors, provided that these errors are
+sufficiently small relative to the gap between optimal
+and suboptimal actions.
+
+In Section~\ref{method:acquisition} we introduced the
+predicted action gap $\Delta_t(s)$, calculated from the
+GP predictive means, as a component of the
+decision-uncertainty acquisition score. We now consider
+the corresponding gap defined using the exact Q-functions.
+
+For an augmented state $s=(x,y)$, let the set of optimal
+actions be
+\begin{equation}
+	\A_t^*(s)
+	=
+	\arg\min_{a\in\A} Q_t(s,a).
+	\label{optimal-action-set}
+\end{equation}
+
+In the following analysis, we assume that at least one
+suboptimal action exists, so that the set
+$\A\setminus\A_t^*(s)$ is nonempty.
+Under this assumption, we define the true action gap as
+\begin{equation}
+	\Delta_t^{\text{true}}(s)
+	=
+	\min_{a\in\A\setminus\A_t^*(s)}
+	\left[Q_t(s,a)-V_t(s)\right].
+	\label{true-action-gap}
+\end{equation}
+
+Let the local Q-function approximation error be
+\begin{equation}
+	e_t^Q(s)
+	=
+	\max_{a\in\A}
+	|\hat Q_t(s,a)-Q_t(s,a)|.
+	\label{local-q-error}
+\end{equation}
+
+Recall that for $y\geq0$, the approximate Q-function
+is $\hat Q_t(s,a)=y+\hat Q_t^{\text{RN}}(x,a)$.
+
+The approximate greedy action is given by
+\begin{equation}
+	\hat a_t(s)
+	\in\arg\min_{a\in\A}\hat Q_t(s,a).
+	\notag
+	\label{approx-greedy-action}
+\end{equation}
+
+\textbf{Proposition.}
+If
+\begin{equation}
+	\Delta_t^{\text{true}}(s)>2e_t^Q(s),
+	\label{action-gap-condition}
+\end{equation}
+then the approximate greedy action is optimal,
+i.e., $\hat a_t(s)\in\A_t^*(s)$.
+
+\textit{Proof.}
+Let $a_t^*(s)\in\A_t^*(s)$. By the optimality of $\hat a_t(s)$ with respect to $\hat Q_t$, we have
+\begin{equation}
+	\begin{array}{rl}
+		0 \leq Q_t(s,\hat a_t(s))-V_t(s) &\displaystyle\leq
+		\left[
+		Q_t(s,\hat a_t(s))
+		-\hat Q_t(s,\hat a_t(s))
+		\right]\\[4pt]
+		&\displaystyle\quad+
+		\left[
+		\hat Q_t(s,a_t^*(s))
+		-Q_t(s,a_t^*(s))
+		\right]\\[4pt]
+		&\displaystyle\leq 2e_t^Q(s).
+	\end{array}
+	\label{action-selection-regret}
+\end{equation}
+
+If $\hat a_t(s)$ were suboptimal, the definition
+of the true action gap would imply
+\begin{equation}
+	Q_t(s,\hat a_t(s))-V_t(s)
+	\geq\Delta_t^{\text{true}}(s),
+	\notag
+\end{equation}
+contradicting
+$\Delta_t^{\text{true}}(s)>2e_t^Q(s)$.
+Therefore,
+$\hat a_t(s)\in\A_t^*(s)$.
+\hfill$\square$
+
+If all actions are optimal, any approximate greedy action is also optimal, and the conclusion holds trivially.
+
+Equation \eqref{action-selection-regret} bounds the one-step action-selection error. The proposition further shows when the approximate greedy action is optimal. These results motivate decision-aware sampling, but do not guarantee the effectiveness of our acquisition score.
+
+
+\subsection{Policy-performance error}
+\label{method:policy-error}
+
+Let us define the uniform Q-function approximation error
+at time $t$ as
+\begin{equation}
+	e_t^Q = \sup_{s \in \mathcal{Z}_t} e_t^Q(s)
+	\label{uniform-q-error}
+\end{equation}
+where $e_t^Q(s)$ is defined in \eqref{local-q-error}.
+
+For a fixed threshold $\eta$, let $\hat{\pi}_{\eta}$ denote the policy greedy with respect to $\hat{Q}_t$.
+
+\textbf{Proposition.}
+The performance loss of $\hat{\pi}_{\eta}$ satisfies
+\begin{equation}
+	0 \leq \EE^{\hat{\pi}_{\eta}} \left[ \left( C^{\hat{\pi}_{\eta}} - \eta \right)_+ \right] - V_0(x_0, -\eta) \leq 2\sum_{t=0}^{T-1} e_t^Q.
+\end{equation}
+
+\textit{Proof.}
+By \eqref{action-selection-regret}, the one-step action-selection error satisfies
+\begin{equation*}
+	0 \leq Q_t(s, \hat{\pi}_{\eta, t}(s)) - V_t(s) \leq 2e_t^Q.
+\end{equation*}
+
+By definition of $Q_t$ and the law of total expectation, the one-step action selection error can be written as
+\begin{equation}
+	\begin{array}{rl}
+		Q_t(s, \hat{\pi}_{\eta, t}(s)) - V_t(s) &= \EE^{\hat{\pi}_{\eta}} \left[ V_{t+1}(s_{t+1}) - V_t(s) \mid s_t = s \right] \\
+		\EE^{\hat{\pi}_{\eta}} \left[ Q_t(s_t, \hat{\pi}_{\eta, t}(s_t)) - V_t(s_t) \right] &= \EE^{\hat{\pi}_{\eta}} \left[ \EE^{\hat{\pi}_{\eta}} \left[ V_{t+1}(s_{t+1}) - V_t(s_t) \mid s_t \right] \right] \\
+		&= \EE^{\hat{\pi}_{\eta}} \left[ V_{t+1}(s_{t+1}) - V_t(s_t) \right]
+	\end{array}
+	\notag
+	\label{q-error-as-value-difference}
+\end{equation}
+
+Thus, summing these errors along the trajectory $t=0, \dots , T-1$:
+\begin{equation}
+	\begin{array}{rl}
+		\displaystyle \sum_{t=0}^{T-1} \EE^{\hat{\pi}_{\eta}} \left[ Q_t(s_t, \hat{\pi}_{\eta, t}(s_t)) - V_t(s_t) \right] & \displaystyle = \sum_{t=0}^{T-1} \EE^{\hat{\pi}_{\eta}} \left[ V_{t+1}(s_{t+1}) - V_t(s_t) \right] \\
+		& \displaystyle = \EE^{\hat{\pi}_{\eta}} \left[ V_T(s_T) \right] - V_0(x_0, -\eta) \\
+		& = \EE^{\hat{\pi}_{\eta}} \left[ \left( C^{\hat{\pi}_{\eta}} - \eta \right)_+ \right] - V_0(x_0, -\eta).
+	\end{array}
+	\label{q-error-sum}
+\end{equation}
+
+On the other hand, their summation can be bounded using \eqref{action-selection-regret}:
+\begin{equation}
+	\sum_{t=0}^{T-1} \EE^{\hat{\pi}_{\eta}} \left[ Q_t(s, \hat{\pi}_{\eta, t}(s)) - V_t(s) \right] \leq 2\sum_{t=0}^{T-1} e_t^Q.
+	\label{q-error-bound}
+\end{equation}
+
+Combining \eqref{q-error-sum} and \eqref{q-error-bound},
+\begin{equation*}
+	\EE^{\hat{\pi}_{\eta}} \left[ \left( C^{\hat{\pi}_{\eta}} - \eta \right)_+ \right] - V_0(x_0, -\eta) \leq 2\sum_{t=0}^{T-1} e_t^Q.
+\end{equation*}
+
+The nonnegativity of the performance loss follows from the nonnegativity of each summed selection error.
+\hfill$\square$
+
+\noindent\textbf{Corollary.}
+Let $\hat{\eta}$ be the threshold selected by the approximate outer optimization, and let $\hat{\pi}=\hat{\pi}_{\hat{\eta}}$.
+Then,
+\begin{equation}
+	\AVaR_{\alpha} \left( C^{\hat{\pi}} \right) - \min_{\pi} \AVaR_{\alpha} \left( C^{\pi} \right) \leq L_{\eta}\frac{h_{\eta}}{2} + \frac{2}{1-\alpha} \| \hat{V}_0 - V_0 \|_{\infty, \mathcal{Z}_0}  + \frac{2}{1-\alpha} \sum_{t=0}^{T-1}e_t^Q.
+\end{equation}
+
+\noindent\textit{Proof.}
+By the Rockafellar--Uryasev representation,
+\begin{equation}
+	\begin{array}{rl}
+		\displaystyle \AVaR_{\alpha} \left( C^{\hat{\pi}} \right) &= \displaystyle \min_{\eta \in \RR} \left\{ \eta + \frac{1}{1 - \alpha} \EE^{\hat{\pi}} \left[ \left( C^{\hat{\pi}} - \eta \right)_+ \right] \right\} \\
+		& \displaystyle \leq \hat{\eta} + \frac{1}{1-\alpha} \EE^{\hat{\pi}} \left[ \left( C^{\hat{\pi}} - \hat{\eta} \right)_+ \right]
+	\end{array}
+	\notag
+	\label{approx-policy-avar-bound}
+\end{equation}
+
+Also, since $\eta^*$ is a global optimizer,
+\begin{equation}
+	\min_{\pi} \AVaR_{\alpha} \left( C^{\pi} \right) = J(\eta^*)
+	\notag
+	\label{optimal-eta-avar}
+\end{equation}
+
+Thus, the difference can be written as
+\begin{equation}
+	\begin{array}{rl}
+		\displaystyle \AVaR_{\alpha} \left( C^{\hat{\pi}} \right) - \min_{\pi} \AVaR_{\alpha} \left( C^{\pi} \right) & \displaystyle \leq \hat{\eta} + \frac{1}{1-\alpha} \EE^{\hat{\pi}} \left[ \left( C^{\hat{\pi}} - \hat{\eta} \right)_+ \right] - J(\eta^*) \\
+		& \displaystyle = \hat{\eta} + \frac{1}{1-\alpha} \EE^{\hat{\pi}} \left[ \left( C^{\hat{\pi}} - \hat{\eta} \right)_+ \right] - J(\eta^*) + J(\hat{\eta}) - J(\hat{\eta}) \\
+		& \displaystyle = J(\hat{\eta}) - J(\eta^*) \\
+		& \displaystyle \quad + \hat{\eta} +  \frac{1}{1-\alpha} \EE^{\hat{\pi}} \left[ \left( C^{\hat{\pi}} - \hat{\eta} \right)_+ \right] - J(\hat{\eta}) \\
+		& \displaystyle = J(\hat{\eta}) - J(\eta^*) \\
+		& \displaystyle \quad + \frac{1}{1 - \alpha} \left( \EE^{\hat{\pi}}
+		\left[ \left( C^{\hat{\pi}}-\hat{\eta} \right)_+ \right] - V_0(x_0,-\hat{\eta}) \right).
+	\end{array}
+	\notag
+	\label{policy-performance-derivation}
+\end{equation}
+Applying \eqref{eta-combined-error} and the preceding proposition gives the result. \hfill$\square$

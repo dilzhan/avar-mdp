@@ -1,0 +1,8 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+In this paper, we studied finite-horizon static AVaR control using approximate dynamic programming. We proposed a probabilistic ADP method based on Gaussian processes, which approximates Q-functions in the difficult region of the augmented state space and allocates Bellman backups according to decision uncertainty, reachability, and tail relevance. We also derived approximation and policy-performance error bounds, accounting for the risk-neutral decomposition and outer threshold optimization.
+
+The experiments show that decision-aware sampling often achieves better policy performance per Bellman backup than random or uncertainty sampling, especially at moderate computational budgets. However, adding reachability or tail weighting does not consistently improve performance. We also observed that better value-function estimates do not necessarily produce better policies, and that increasing the number of Bellman backups does not always improve the resulting AVaR.
+
+These findings suggest that allocating computational effort according to uncertainty about the optimal action is a promising approach to risk-averse ADP. Nevertheless, the experiments are limited to one control problem and do not establish general superiority or convergence. Future work may investigate more effective ways to incorporate reachability and tail relevance, as well as extensions to more complex control problems.

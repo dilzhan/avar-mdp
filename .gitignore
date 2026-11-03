@@ -11,10 +11,34 @@ __pycache__/
 # JAX
 .jax_cache/
 
+# LaTeX build files (keep .tex, .bib, figures and the compiled PDF)
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.dvi
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex
+*.synctex.gz
+*.toc
+*.vrb
+*.xdv
+_minted-*/
+
 # Editor and OS
 .vscode/
 .idea/
 .DS_Store
+*.swp
+*.swo
+*~
 
 # Temporary files
 *.log

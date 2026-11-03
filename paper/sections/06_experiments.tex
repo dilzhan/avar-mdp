@@ -1,0 +1,112 @@
+\section{Experimental setup}
+\label{sec:experiments}
+
+We consider the stochastic control problem
+\begin{equation}
+	x_{t+1}=x_t+a_t+\xi_t,
+	\quad
+	c_t(x_t,a_t)=x_t^2+a_t^2,
+	\quad
+	c_T(x_T)=x_T^2,
+	\label{test-model}
+\end{equation}
+with $\A=\{-1,0,1\}$, $x_0=1$, horizons $T=3,7$, and confidence level $\alpha=0.95$. We minimize the static AVaR of cumulative cost. The disturbances follow a discrete approximation of the standard normal distribution with 201 equally spaced points on $[-5,5]$. Their probabilities are proportional to the normal density and normalized to sum to one. All methods use this distribution for Bellman expectations and policy evaluation.
+
+\subsection{Reference solutions and thresholds}
+\label{exp:references}
+
+For $T=3$, we compute the exact DP solution for the discrete disturbance distribution and search over
+\begin{equation}
+	\mathcal{H}=\{0,0.25,0.50,\dots,40\}.
+	\notag
+	\label{test-eta-grid}
+\end{equation}
+The grid-optimal threshold is $\eta=13.75$. The reference policy is evaluated by enumerating all disturbance paths.
+
+For $T=7$, we estimate the threshold using a pilot baseline ADP. We first estimate the VaR of the fitted risk-neutral policy, train a pilot ADP at this threshold, and use its empirical VaR, $\eta=27.8325$. The pilot and later benchmarks share an evaluation seed, so threshold selection is not fully independent of evaluation.
+
+All approximate methods use the same fitted risk-neutral continuation for each horizon. The decomposition for $y\geq0$ is exact, but its continuation values are
+approximated as described in Section~\ref{problem:rn-approximation}.
+
+\subsection{Experimental comparisons}
+\label{exp:comparisons}
+
+We conduct four experiments. First, we validate baseline ADP against exact DP at $T=3$, comparing root values, policy performance, and action agreement across backup budgets. Unseen states are initialized using 20 Monte Carlo rollouts.
+
+Second, we compare six probabilistic ADP sampling rules: random, uncertainty, decision-aware, and decision-aware with reachability, tail relevance, or both. The four decision-based rules use
+\begin{equation}
+	D_t(s), \quad
+	D_t(s)R_t(s), \quad
+	D_t(s)\tilde{L}_t(s), \quad
+	D_t(s)R_t(s)\tilde{L}_t(s),
+	\label{test-scores}
+\end{equation}
+where $\tilde{L}_t(s)=0.5+0.5L_t(s)$ prevents zero tail weights.
+
+At each stage $t=1,\dots,T-1$, we generate 5,000 uniform candidates from $[-8,8]\times[-\eta,0)$, shared across methods and budgets for each seed. Active acquisition starts with 20 random states and adds batches of 10. Each selected state receives backups for all three actions. Random sampling fits its GPs once per stage.
+
+We use RBF-kernel GPs with normalized-input length scales $(0.16,0.16)$, regularization $10^{-6}$, and standardized targets. Reachability and tail scores use 2,000 risk-neutral policy rollouts and $k=50$ nearest neighbors. Saved baseline policies trained for 1,000 episodes serve as references: three for $T=3$ and one for $T=7$.
+
+Third, we study outer-threshold optimization using random, uncertainty, and decision-aware sampling. One collection of GPs is trained on $[-8,8]\times[-40,0)$ and reused to evaluate all thresholds in $\mathcal{H}$. We select the threshold minimizing the predicted RU objective and evaluate its policy. One saved baseline policy per horizon serves as a reference.
+
+Finally, we compare candidate pools of 1,000 to 5,000 states per stage, in increments of 1,000, for random and decision-aware sampling. Smaller pools are subsets of the same 5,000-point pool. Other settings remain fixed.
+
+\subsection{Budgets and repeated runs}
+\label{exp:budgets}
+
+One Bellman backup evaluates the Bellman expectation for one state-action pair. We use nominal budgets
+\begin{equation}
+	\mathcal{B}
+	=\{900,1800,2700,3600,5400,7200,9000\}.
+	\label{test-budgets}
+\end{equation}
+The fixed-threshold experiment at $T=3$ uses only the first four budgets.
+
+For probabilistic ADP, the remaining budget is divided equally among stages $1,\dots,T-1$ after reserving root backups: three for fixed $\eta$ and $3|\mathcal{H}|=483$ for outer optimization. Actual counts may be slightly smaller due to action grouping. Budgets exclude GP fitting, acquisition, initialization, risk-neutral preparation, and evaluation. We report actual backups and training and evaluation times separately.
+
+Table~\ref{tab:exp-runs} summarizes the runs. The three-seed experiments use seeds 47-49, and the ten-seed experiments use 47-56.
+
+\begin{table}[H]
+	\centering
+	\caption{Training seeds and evaluation trajectories.}
+	\begin{tabular}{lccc}
+		\hline
+		Experiment & Horizon & Seeds & Trajectories \\
+		\hline
+		Baseline validation & 3 & 3 & 2,000 \\
+		Fixed threshold & 3 & 10 & 2,000 \\
+		Fixed threshold & 7 & 3 & 2,000 \\
+		Outer threshold & 3 and 7 & 10 each & 2,000 \\
+		Candidate pool & 3 and 7 & 3 each & 20,000 \\
+		\hline
+	\end{tabular}
+	\label{tab:exp-runs}
+\end{table}
+
+\subsection{Policy evaluation}
+\label{exp:evaluation}
+
+We evaluate policies using cumulative costs from shared disturbance trajectories to reduce Monte Carlo comparison noise. For costs $C^{(1)},\dots,C^{(N)}$, we report mean cost and the empirical RU objective
+\begin{equation}
+	\hat{J}_{\text{eval}}(\eta)
+	=
+	\eta+\frac{1}{N(1-\alpha)}
+	\sum_{i=1}^{N}(C^{(i)}-\eta)_+.
+	\label{eval-ru}
+\end{equation}
+Empirical AVaR minimizes this expression over $\eta$. It differs from the evaluated RU at the selected threshold and from the predicted objective
+\begin{equation}
+	\hat{J}(\eta)=\eta+\hat{V}_0(x_0,-\eta)/(1-\alpha).
+	\notag
+	\label{predicted-objective}
+\end{equation}
+
+For $T=3$, we also measure disagreement with the exact
+policy on 101 test entries: the initial state and 50 states
+sampled with replacement at each of $t=1,2$, according
+to exact-policy visitation probabilities.
+
+We report means and standard deviations across training
+seeds, separately from Monte Carlo uncertainty. In paired evaluations, empirical AVaR is computed from the full set of trajectories, while the RU objective allows comparisons trajectory by trajectory. The candidate-pool experiment uses more evaluation trajectories, so its AVaR estimates have different precision and should not be compared directly with those from other experiments.
+
+Baseline ADP may randomly initialize and store values for unseen states during evaluation. Its results can therefore depend on the order of evaluation. For this reason, one should treat baseline comparisons as descriptive rather than conclusive.

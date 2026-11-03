@@ -1,0 +1,103 @@
+\documentclass[11pt]{article}
+
+% ------------------------------------------------------------
+% Packages
+% ------------------------------------------------------------
+
+\usepackage[margin=1in]{geometry}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathtools}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{subcaption}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+\usepackage{natbib}
+
+\usepackage{authblk}
+
+% ------------------------------------------------------------
+% Mathematical notation
+% ------------------------------------------------------------
+
+\newcommand{\AVaR}{\operatorname{AVaR}}
+\newcommand{\VaR}{\operatorname{VaR}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\RR}{\mathbb{R}}
+
+\newcommand{\X}{\mathcal{X}}
+\newcommand{\A}{\mathcal{A}}
+
+% ------------------------------------------------------------
+% Theorems
+% ------------------------------------------------------------
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{assumption}{Assumption}
+
+% ------------------------------------------------------------
+% Document
+% ------------------------------------------------------------
+
+\setlength\parindent{0pt}
+
+\title{Decision-Aware Bellman Sampling for Static AVaR Control Using Gaussian Processes}
+
+\author[1]{Dilzhan Zhangunissov}
+\author[2]{Aruzhan Dauleshova}
+\author[1]{Kerem U\u{g}urlu}
+
+\affil[1]{Department of Mathematics, Nazarbayev University, Kazakhstan}
+\affil[2]{Independent Researcher}
+
+\date{\today}
+
+\begin{document}
+	
+	\maketitle
+	
+	\input{sections/00_abstract}
+	
+	\input{sections/01_introduction}
+	
+	\input{sections/02_related_work}
+	
+	\input{sections/03_problem_formulation}
+	
+	\input{sections/04_methodology}
+	
+	\input{sections/05_theory}
+	
+	\input{sections/06_experiments}
+	
+	\input{sections/07_results}
+	
+	\input{sections/08_conclusion}
+	
+	\input{sections/github.tex}
+	
+	\newpage
+	\bibliographystyle{plainnat}
+	\bibliography{ref}
+	
+	\appendix
+	
+	\input{appendices/A_baseline_adp}
+	\input{appendices/B_probabilistic_adp}
+	
+\end{document}

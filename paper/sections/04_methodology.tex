@@ -1,0 +1,373 @@
+\section{Methodology}
+\label{sec:method}
+
+\subsection{Exact dynamic programming}
+\label{method:exact}
+Both the proposed and baseline algorithms can be verified against an exact dynamic programming solution if the horizon $T$ is small. The expectation in \eqref{q-function} is computed using Riemann summation
+\begin{equation}
+	\begin{array}{rl}
+		\EE \left[ V_{t+1} (x_{t+1}, y_{t+1}) \mid x_t = x, y_t = y, a_t = a \right] & \displaystyle = \int V_{t+1} (x_{t+1}, y_{t+1}) p_{x_{t+1}} \left( x_{t+1} \mid x_t = x, a_t = a \right) d x_{t+1} \\
+		& \displaystyle = \int V_{t+1} (f(x_t, a_t, \xi_t), y_t + c_t(x_t, a_t))\ p_{\xi}(\xi_t)\ d \xi_t \\
+		& \displaystyle \approx \sum_{i=0}^{N_{\xi}} V_{t+1} (f(x_t, a_t, \xi^{(i)}), y_t + c_t(x_t, a_t))\ w_i
+	\end{array}
+	\label{riemann-expectation}
+\end{equation}
+where
+\begin{itemize}
+	\item $p_{\xi}$ is the density of disturbance distribution,
+	\item $\xi^{(i)}$ are discretization points of the disturbance domain, defined by:
+	\begin{itemize}
+		\item $\xi^{(0)} = \xi_{\text{min}},$
+		\item $\xi^{(N_{\xi})} = \xi_{\text{max}},$
+		\item $\xi^{(i+1)} = \xi^{(i)} + \Delta_{\xi},$ 
+		\item $\Delta_{\xi} = \frac{\xi_{\text{max}} - \xi_{\text{min}}}{N_{\xi}},$
+	\end{itemize}
+	\item $w_i = \frac{p_{\xi}(\xi^{(i)})}{\sum_j p_{\xi}(\xi^{(j)})}$ is the normalized discrete weights of points.
+\end{itemize}
+
+For a sufficiently wide integration domain and fine discretization mesh, the numerical approximation is expected to approach the true expectation. In this paper we refer to this method as \textit{Exact Dynamic Programming} to distinguish it from the approximate dynamic programming methods introduced in the following subsections. Here, \textit{exact} means that the Bellman recursion is solved directly, without approximating the value functions.
+
+\subsection{Baseline approximate dynamic programming}
+\label{method:baseline-adp}
+
+The exact dynamic programming algorithm serves as a reliable reference for small horizons, but its computational cost can grow exponentially with the horizon. To reduce computational cost, we use an Approximate Dynamic Programming (ADP) algorithm.
+
+The method is based on Monte Carlo rollouts. To initialize the value function at an unseen state $(t,x,y)$, we simulate $N$ trajectories from that state. The actions in the trajectories are chosen using the approximate risk-neutral policy, which provides a computationally cheap way to estimate the remaining cumulative cost. For each trajectory, we calculate the remaining cumulative cost and apply the ramp function. The initial estimate is then obtained by averaging these values.
+
+To improve the estimate, we also use the risk-neutral value approximation and define
+\begin{equation}
+	\hat{V}_t^{\text{init}}(x,y) = \max\left\{
+	\frac{1}{N}\sum_{i=1}^N (y+C_{t:T}^{(i)})_+,\ 
+	\left(y+\hat{V}_t^{\text{RN}}(x)\right)_+
+	\right\},
+	\label{value-initializer}
+\end{equation}
+where $C_{t:T}^{(i)}$ is the remaining cumulative cost of the $i$-th trajectory.
+
+In the equation above we have used Jensen's bound: given that the ramp function is convex, we can obtain
+\begin{equation}
+	\begin{array}{rl}
+		V_t(x, y) & \displaystyle = \min_{\pi} \EE^{\pi} \left[ \left( y + C_{t:T}^{\pi} \right)_+ \right] \\
+		& \displaystyle \geq \min_{\pi} \left( \EE^{\pi} \left[ y + C_{t:T}^{\pi} \right] \right)_+ \\
+		& = \left( y + V_t^{\text{RN}} (x) \right)_+
+	\end{array}
+	\notag
+	\label{value-jensen}
+\end{equation}
+Since the approximation of the risk-neutral value function is used we cannot guarantee that the right-hand side is a valid lower bound. However, using the risk-neutral approximation gave us a useful proxy to a lower bound for the current value function. Monte Carlo estimation was compared to the risk-neutral value function and their maximum was used as the initial value.
+
+At terminal states, we use the exact terminal value. For visited nonterminal states, we apply the Bellman updates described in Section~\ref{problem:augmentation}, using the initialized values whenever necessary. The initialized values are stored and reused to avoid repeated simulations.
+
+For $y \geq 0$, we can use approximation of the risk-neutral Q-function as discussed in Section~ \ref{problem:rn-approximation}. In this paper we use linear regression to approximate each Q-function:
+\begin{equation}
+	\hat{Q}_t^{\text{RN}}(x, a) = \phi^T(x) \theta_{t, a} \approx Q_t^{\text{RN}}(x, a)
+	\label{linear-q-approx}
+\end{equation}
+where 
+\begin{itemize}
+	\item $\phi(x): \X \to \mathbb{R}^{d}$ is a feature map,
+	\item $\theta_{t, a} \in \mathbb{R}^{d}$ is a vector of regression parameters.
+\end{itemize}
+The feature map combines quadratic and radial basis function (RBF)
+features:
+\begin{equation}
+	\phi(x) =
+	\begin{bmatrix}
+		1 & z & z^2 & \psi_1(x) & \cdots & \psi_{d-3}(x)
+	\end{bmatrix}^{\top},
+	\label{feature-map}
+\end{equation}
+where $z \in [-1,1]$ is obtained by linearly scaling $x$, and
+\begin{equation}
+	\psi_i(x) = \exp\left(-\frac{(x-c_i)^2}{2\ell^2}\right), \quad i=1,\ldots,d-3.
+	\notag
+	\label{rbf}
+\end{equation}
+The RBF centers $c_i$ are uniformly spaced over a slightly enlarged interval around $[x_{\min},x_{\max}]$.
+
+The model training process is recursive as described in Section~\ref{problem:rn-approximation}. 
+
+To reuse previously computed values, we store them in a lookup table. Since the state variables $x$ and $y$ are continuous, we round them to six decimal places before constructing the cache keys. This allows sufficiently close states to share the same stored value, reducing the number of repeated computations at the cost of a small additional approximation.
+
+The full algorithm can be found in Appendix~\ref{app:baseline-adp}.
+
+The baseline ADP reduces computational cost by exploiting the risk-neutral region, reusing previously computed values, and approximating the values of unseen states using Monte Carlo rollouts instead of full Bellman recursion. However, its accuracy depends on which states are visited during training, and the algorithm does not explicitly account for the importance of individual Bellman updates.
+
+\subsection{Proposed probabilistic ADP}
+\label{method:prob}
+
+The baseline ADP reduces computational cost, but it does not explicitly account for the importance of states when performing Bellman updates. As discussed in Section~\ref{problem:challenge}, different states may have different effects on the resulting policy and AVaR objective. To address this, we propose a probabilistic ADP method that allocates Bellman evaluations to selected states in the region $y<0$, while continuing to use the risk-neutral approximation for $y\geq 0$.
+
+The proposed algorithm uses Gaussian Processes (GPs) to approximate the Q-functions, providing both point predictions of the value and estimates of uncertainty. To decide where to perform Bellman updates, we construct sets of candidate states and evaluate them using three criteria: reachability, uncertainty about the optimal action, and relevance to the AVaR tail. These criteria guide the allocation of a limited computational budget. The GP models are then trained backward in time using the selected Bellman evaluations. Additionally, the use of GPs reduces our need to discretize the state space as we have done in the baseline ADP by rounding the states. The following subsections describe each component of the proposed method. The resulting algorithm can be found in Appendix~\ref{app:prob-adp}.
+
+\subsubsection{GP approximation of Q-functions}
+\label{method:gp-approx}
+
+For the region $y<0$, we approximate the Q-functions using GPs. Unlike the regression models used for the risk-neutral approximation, GPs provide both point predictions and estimates of uncertainty. We train a separate GP model for each time step $t$ and action $a \in \A$, using the augmented state $s = (x,y)$ as input.
+
+The training data are obtained by applying the Bellman operator at selected augmented states. For a training state $s_j=(x_j,y_j)$ and action $a$, the target value is calculated as
+\begin{equation}
+	q_{t,a}^{(j)}
+	=
+	\sum_{\xi^{(i)}\in\Xi} w_i
+	\hat{V}_{t+1}\left(
+	f(x_j,a,\xi^{(i)}),
+	y_j+c_t(x_j,a)
+	\right).
+	\label{gp-bellman-target}
+\end{equation}
+where $\hat{V}_{t+1}$ is the value function approximation obtained at the next time step. The resulting training dataset for each GP is
+\begin{equation}
+	\mathcal{D}_{t, a} = \left\{ \left( s_j, q_{t, a}^{(j)} \right) \right\}_{j=1}^{n_t}
+	\notag
+	\label{gp-training-dataset}
+\end{equation}
+where $n_t$ is the number of selected training states at time $t$.
+
+
+We fit a GP with mean function $m_{t,a}$ and covariance kernel $k_{t,a}$ to the approximate Bellman targets defined in \eqref{gp-bellman-target}.
+
+We use an RBF kernel with fixed hyperparameters and scale the GP inputs using fixed state-space bounds. Before fitting each GP, the training targets are standardized, and predictions are transformed back to their original scale.
+
+Given the training data, the GP provides a predictive mean $\mu_{t,a}(s)$ and variance $\sigma_{t,a}^2(s)$. These are calculated as
+\begin{equation}
+	\begin{array}{c}
+		\mu_{t, a}(s) = m_{t, a}(s) + k(s)^{\top} (K + \lambda I)^{-1} (q_{t, a} - m_{t, a}), \\
+		\sigma_{t, a}^{2} (s) = k_{t, a}(s, s) - k(s)^{\top} (K + \lambda I)^{-1} k(s),
+	\end{array}
+	\label{gp-inference}
+\end{equation}
+where:
+\begin{itemize}
+	\item $K$ is the covariance matrix of the training inputs,
+	\item $k(s)$ is the vector of covariance between training inputs and $s$,
+	\item $q_{t, a}$ is the vector of training targets,
+	\item $m_{t, a}$ is the prior mean at training inputs,
+	\item $\lambda$ is a regularizer.
+\end{itemize}
+
+We use the predictive mean to approximate the Q-functions:
+\begin{equation}
+	\hat{Q}_t(x, y, a) = \mu_{t, a}(x, y),
+	\label{gp-predictive-mean}
+\end{equation}
+which gives the corresponding value function and policy:
+\begin{equation}
+	\begin{array}{c}
+		\displaystyle \hat{V}_t(x, y) = \max \left\{ \min_{a \in \A} \hat{Q}_t (x, y, a),\ \left( y + \hat{V}_t^{\text{RN}}(x) \right)_+ \right\},\\
+		\displaystyle \hat{\pi}_t(x, y) = \arg\min_{a \in \A} \hat{Q}_t(x, y, a).
+	\end{array}
+	\label{gp-value-policy}
+\end{equation}
+
+These approximations are used only for $y<0$. For $y\geq0$, we continue using the risk-neutral approximation described earlier, while at $t=T$ we use the exact terminal value.
+
+The predictive uncertainty $\sigma_{t,a}(x,y)$ provides information about how uncertain the GP model is at a particular state. It measures uncertainty within the fitted model, but it does not necessarily represent the actual Q-function approximation error. We use this information when selecting states for Bellman updates, as described in the following subsections.
+
+\subsubsection{Candidate-state construction}
+\label{method:candidate}
+
+Since the augmented state space $\X \times \RR$ is continuous, we cannot evaluate the Bellman operator at every possible state. Instead, for each time step $t$, we construct a finite set of candidate states
+
+\begin{equation}
+	\mathcal{S}_t = \{s_t^{(j)}\}_{j=1}^{M_t},
+	\qquad s_t^{(j)}=(x_t^{(j)},y_t^{(j)}),
+	\label{candidate-set}
+\end{equation}
+where $M_t$ is the number of candidates at time $t$. These states are used to select the points at which Bellman updates will be performed.
+
+The candidate states are restricted to the region $y<0$, since for the region $y\geq0$ we use risk-neutral approximation. Note that, since the stage costs are nonnegative, the augmented state satisfies $y_t\geq-\eta$ for a fixed threshold $\eta$.
+
+To construct the candidate set, we consider a range of possible values of $x$ at each time step, based on the system dynamics and disturbance distribution. We then generate candidate states from the region
+\begin{equation}
+	\begin{array}{lr}
+	\mathcal{R}_t =
+	[x_t^{\text{min}},x_t^{\text{max}}]\times[-\eta,0), & 0 < t < T \\
+	\mathcal{R}_t = \{ (x_0, -\eta) \}, & t=0,
+	\end{array}
+	\label{candidate-region}
+\end{equation}
+where $x_t^{\text{min}}$ and $x_t^{\text{max}}$ define the range of states considered at time $t$. We then select candidate states from this region without discretizing the entire state space.
+
+However, not every state in this region is necessarily reachable. Since $y$ depends on $x$ as it accumulates the costs through the trajectory, some candidate states might be unlikely.
+
+To avoid performing Bellman updates at all candidate states, we apply a scoring system to determine which candidate states should receive more computational effort. The acquisition scores are described in the following subsection.
+
+\subsubsection{Bellman acquisition scores}
+\label{method:acquisition}
+
+The candidate set $\mathcal S_t$ contains possible states for Bellman updates. However, evaluating the Bellman operator at every candidate would be computationally expensive. To select the most useful states, we introduce acquisition scores based on three criteria: uncertainty about the optimal action, reachability, and relevance to the AVaR tail.
+
+\paragraph{Decision uncertainty.}
+
+The first criterion measures how uncertain the GP models are about the optimal action. Since our objective is to obtain an accurate policy, reducing uncertainty about the optimal action may be more important than reducing the approximation error of every Q-function.
+
+For a candidate state $s=(x,y)$, let $a_1$ and $a_2$ denote the actions with the smallest and second-smallest GP predictive means, respectively. We define the predicted action gap as
+
+\begin{equation}
+	\Delta_t(s)
+	=
+	\mu_{t,a_2}(s)-\mu_{t,a_1}(s).
+	\label{decision-gap}
+\end{equation}
+
+A small gap indicates that the two actions have similar predicted values. However, the gap alone does not tell us how confident the GP models are about their ordering.
+
+The GP predictions are Gaussian. Assuming that the GP predictions for different actions are independent, their difference is also Gaussian. Using this fact we can estimate the probability of the second action being better than the first one. Let us first define their difference as a Gaussian
+\begin{equation}
+	\begin{array}{rl}
+		Q_1 & \sim \mathcal{N}(\mu_{t, a_1}(s), \sigma_{t, a_1}^2(s)) \\
+		Q_2 & \sim \mathcal{N}(\mu_{t, a_2}(s), \sigma_{t, a_2}^2(s)) \\
+		Z_t(s) & = Q_2 - Q_1 \\
+		& \sim \mathcal{N}(\Delta_t(s), \sigma_{t, a_1}^2(s) + \sigma_{t, a_2}^2(s))
+	\end{array}
+	\notag
+	\label{action-difference-distribution}
+\end{equation}
+Now we can define a decision score as
+\begin{equation}
+	\begin{array}{rl}
+		D_t(s) &= 2 \PP \left( Z_t(s) < 0 \right) \\
+		& \displaystyle = 2 \Phi \left( -\frac{\Delta_t(s)}{\sqrt{\sigma_{t, a_1}^2(s) + \sigma_{t, a_2}^2(s)}} \right)
+	\end{array}
+	\label{decision-score}
+\end{equation}
+where $\Phi$ is the standard normal cumulative distribution function (CDF). The factor of 2 normalizes the score to the range $[0,1]$.
+
+Larger values of $D_t(s)$ show greater uncertainty about the ordering of the two actions. This score is a proxy for decision uncertainty rather than the exact probability of selecting the wrong action, since other actions are not considered in the comparison.
+
+We also define an uncertainty score
+\begin{equation}
+	U_t(s) = \max_{a \in \A} \sigma_{t, a}(s)
+	\label{uncertainty-score}
+\end{equation}
+which measures the largest predictive standard deviation among the Q-function GP models, regardless of their predicted values.
+
+\paragraph{Reachability.}
+
+The second criterion measures how close a candidate state is to states visited during simulated trajectories. Bellman updates at states that are unlikely to be visited may have little effect on the resulting policy.
+
+To estimate reachability, we simulate trajectories under a selected policy and collect the visited states at each time step. For each candidate $s$, we then find its $k$ nearest neighbors among the rollout states.
+
+Since $x$ and $y$ can have different scales and are correlated, we use the Mahalanobis distance:
+
+\begin{equation}
+	d_t(s,s')
+	=
+	\sqrt{
+		(s-s')^T
+		(\Sigma_t+\varepsilon I)^{-1}
+		(s-s')
+	},
+	\label{mahalanobis-distance}
+\end{equation}
+where $\Sigma_t$ is the covariance matrix of the rollout states at time $t$, and $\varepsilon>0$ is a small regularization parameter.
+
+We then define a reachability score $R_t(s)$ using a distance from a state $s$ to its k-th nearest neighbor $\tilde{s}^{(k)}$:
+\begin{equation}
+	R_t(s) = \frac{1}{d_t(s, \tilde{s}^{(k)})^2 + \delta}
+	\label{reachability-score}
+\end{equation}
+with $\delta > 0$ being a constant that prevents division by zero. The scores are then normalized to the range $[0, 1]$ by dividing each over the maximal score across the candidate states.
+
+This is not the only way to define reachability. One can also consider average distances to nearest neighbors, state visitation probabilities or densities, or other measures of reachability.
+
+\paragraph{Tail relevance.}
+
+AVaR depends on the tail of the total cost distribution, so we want to give more attention to the states that are more relevant to the distribution tail.
+
+Recall that the terminal value function is
+\begin{equation}
+	V_T(x,y)=(y+c_T(x))_+.
+	\notag
+\end{equation}
+
+Therefore, a trajectory contributes a positive value to the fixed-$\eta$ objective only when its total cost exceeds $\eta$. Thus, the score measures relevance to costs exceeding the chosen threshold $\eta$, which may differ from the actual AVaR tail.
+
+Using simulated trajectories, we can estimate the tail relevance of a candidate state from the outcomes of nearby rollout states. One possible score is
+
+\begin{equation}
+	L_t(s)
+	=
+	\frac{1}{k}
+	\sum_{i\in\mathcal N_k(s)}
+	\mathbb{I}
+	\left\{
+	y_T^{(i)}+c_T(x_T^{(i)})>0
+	\right\},
+	\label{tail-score}
+\end{equation}
+
+where $\mathcal N_k(s)$ now denotes the indices of the nearest rollout states, and $(x_T^{(i)},y_T^{(i)})$ is the terminal state of the corresponding trajectory.
+
+This score estimates how frequently trajectories passing near a candidate end up in the AVaR tail. It is based on the rollout policy and does not necessarily represent the tail probability under the optimal policy.
+
+\paragraph{Combination of acquisition scores.}
+
+The described criteria provide different information about the usefulness of a Bellman update. Decision uncertainty identifies states where the optimal action is unclear, reachability favors states that are likely to be visited, and tail relevance favors states associated with larger cumulative costs.
+
+We can use these scores separately or combine them into a single acquisition function:
+\begin{equation}
+	A_t(s)
+	=
+	F\left(D_t(s),R_t(s),L_t(s)\right),
+	\label{acquisition-score-general}
+\end{equation}
+where $F$ denotes the selected combination rule. Different constructions of $A_t(s)$ result in different policies, giving us a field to experiment on.
+
+\subsubsection{Backward training algorithm}
+\label{method:training}
+
+We train the GP models backward in time, starting from $t=T-1$ and continuing to $t=1$. The exact terminal value function is used to calculate the Bellman targets at $t=T-1$.
+
+For acquisition methods involving reachability or tail relevance, we first simulate trajectories under the approximate risk-neutral policy. The visited states and terminal costs are then used to calculate the corresponding acquisition scores.
+
+At each time step, we randomly select $N_{\text{init}}$ states from the candidate set $\mathcal{S}_t$. For each selected state, we calculate the Bellman targets for all actions and fit the initial GP models.
+
+We then calculate acquisition scores for the remaining candidate states using the fitted GP models. The states with the highest scores are selected in batches. After each batch, we calculate the new Bellman targets, add them to the training data, and refit the GP models. This continues until the computational budget for the current time step is reached. For random sampling, all training states are selected randomly and the GP models are fitted only once.
+
+The Bellman targets are calculated using the value-function approximation at the next time step. For $y<0$, we use the GP prediction together with the risk-neutral approximation and the lower bound of zero. For $y\geq 0$, we use the risk-neutral continuation, while at $t=T$ we use the exact terminal value.
+
+After training the GP models for $t=1,\ldots,T-1$, we calculate the Q-values at the initial state $(x_0,-\eta)$ directly using the Bellman operator. Therefore, no GP model is needed at $t=0$. The resulting value is then used in the outer optimization over $\eta$, discussed in the following subsection.
+
+\subsection{Outer optimization over $\eta$}
+\label{method:outer-optimization}
+
+Recall the optimization problem \eqref{avar-objective}:
+\begin{equation*}
+	\displaystyle \min_{\pi} \AVaR_{\alpha}(C^{\pi}) = \min_{\eta \in \RR} \left\{ \eta + \frac{1}{1 - \alpha} \min_{\pi} \EE [(C^{\pi} - \eta)_+] \right\}
+\end{equation*}
+
+In the previous subsections we have formulated baseline ADP and probabilistic ADP methods to solve the inner optimization problem for fixed $\eta$. In this subsection we will discuss the outer optimization problem over the threshold $\eta$. Consider a finite set of candidate thresholds
+\begin{equation}
+	\mathcal{H} = \left\{ \eta_1, \eta_2, \dots, \eta_{N_{\eta}} \right\}
+	\notag
+	\label{eta-family}
+\end{equation}
+over which to search for an optimal threshold.
+
+Then, we modify the candidate domain stated in \eqref{candidate-region} as
+\begin{equation}
+	\mathcal{R}_t = [x_t^{\min},x_t^{\max}] \times[-\max\mathcal{H}, 0), \quad 0<t<T.
+	\label{candidate-set-multiple-eta}
+\end{equation}
+
+This allows the same GP models to be used for
+all candidate thresholds.
+
+
+\paragraph{Baseline ADP}
+
+While we cannot modify the baseline ADP solution to account for several values of $\eta$ at the same time, we can use a shared cache $\mathcal{C}$ to reuse the already calculated value functions. After calculating all of the values $\hat{V}_0(x_0, -\eta)$ for $\eta \in \mathcal{H}$ we can define the optimal approximate $\eta$ as
+\begin{equation}
+	\hat{\eta} = \arg\min_{\eta in \mathcal{H}} \hat{J}(\eta) = \arg\min_{\eta \in \mathcal{H}} \left\{ \eta + \frac{1}{1-\alpha} \hat{V}_0(x_0, -\eta) \right\}.
+	\label{optimal-eta-baseline}
+\end{equation}
+
+\paragraph{Probabilistic ADP}
+
+For probabilistic ADP, we can avoid training separate GP models for each $\eta \in \mathcal{H}$. Instead, we train a single collection of GP models for $t=1,\ldots,T-1$, using candidate states that cover the relevant range of augmented states for all thresholds in $\mathcal{H}$. We then evaluate the Bellman operator at $(x_0,-\eta)$ for each candidate threshold, without training a GP model at $t=0$. The resulting values $\hat{V}_0(x_0,-\eta)$ are used to calculate the corresponding objectives $\hat{J}(\eta)$ and select the best threshold. Each evaluation at the initial state requires one Bellman backup per action and is included in the computational budget.
+
+The reuse of the training GPs is possible because the threshold enters the augmented problem only through the initial condition $y_0=-\eta$. The Bellman recursion at a given augmented state does not otherwise depend on $\eta$. The fitted continuation models can therefore be shared across root queries, provided that their training domain covers the required augmented states.
+
+To conclude the section, we have stated an exact dynamic programming solution to compare the approximate methods against. The exact DP algorithm estimates the expectation using Riemann summation. It is computationally expensive, but can serve as a reliable benchmark for the approximate algorithm. The baseline ADP algorithm was designed using Monte Carlo rollouts and value initialization at unseen states. The main focus of the section is the proposed probabilistic ADP algorithm, which performs Q-function approximation using Gaussian processes and allocates Bellman backups to the candidate states using scoring based on decision uncertainty, reachability, and tail relevance of the candidates. At the end of the section we have briefly discussed an outer optimization over the threshold $\eta$ for baseline and probabilistic ADP algorithms.

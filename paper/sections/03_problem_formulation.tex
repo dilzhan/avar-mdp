@@ -1,0 +1,190 @@
+\section{Problem formulation}
+\label{sec:problem}
+
+\subsection{Finite-horizon Markov decision process}
+\label{problem:mdp}
+
+Consider a finite-horizon controlled Markov process with time
+indices $t=0,1,\ldots,T$, continuous state space
+$\X\subseteq\RR$, and finite action space
+$\A$. The system's dynamics are
+\begin{equation}
+	x_{t+1} = f(x_t, a_t, \xi_t)
+	\label{transition-dynamics}	
+\end{equation}
+where 
+\begin{itemize}
+	\item $x_t\in\X$ denotes the state at time $t$,
+	\item $a_t\in\A$ is the selected action, and
+	\item $\{\xi_t\}_{t=0}^{T-1}$ is a sequence of independent and identically distributed random disturbances.
+\end{itemize}
+The initial state $x_0\in\X$ is assumed to be fixed.
+
+Let the cumulative cost induced by a policy $\pi$ be defined as
+\begin{equation}
+	C^\pi = \sum_{t=0}^{T-1}c_t(x_t,a_t)+c_T(x_T),
+	\label{total-cost}
+\end{equation}
+where 
+\begin{itemize}
+	\item $c_t:\X \times \A \to\RR_{\geq 0}$ is the stage cost at time $t$, and
+	\item $c_T:\X\to\RR_{\geq 0}$ is the terminal cost, depending only on the terminal state.
+\end{itemize} 
+
+We assume that the dynamics and cost functions are measurable
+and that the cumulative cost is integrable under every
+admissible policy.
+
+\subsection{AVaR objective}
+\label{problem:avar}
+
+For confidence level $\alpha\in(0,1)$, the objective is
+\begin{equation}
+	\min_{\pi} \AVaR_{\alpha}(C^\pi).
+	\notag
+	\label{minimize-avar}
+\end{equation}
+
+Using the \cite{rockafellar-2002} representation,
+\begin{equation}
+	\AVaR_{\alpha}(X) = \min_{\eta\in\RR} \left[ \eta + \frac{1}{1-\alpha} \EE\left[(X-\eta)_+\right] \right].
+	\label{ru-objective}
+\end{equation}
+
+Hence the control problem can be written as
+\begin{equation}
+	\begin{array}{rl}
+		\displaystyle \min_{\pi} \AVaR_{\alpha} (C^{\pi}) &= \displaystyle \min_{\pi} \min_{\eta \in \RR} \left[ \eta + \frac{1}{1 - \alpha} \EE [(C^{\pi} - \eta)_+] \right] \\
+		&= \displaystyle \min_{\eta \in \RR} \left\{ \eta + \frac{1}{1 - \alpha} \min_{\pi} \EE [(C^{\pi} - \eta)_+] \right\}
+	\end{array}
+	\label{avar-objective}
+\end{equation}
+
+Since the ramp function acts on the cumulative cost, the problem generally cannot be solved using standard Bellman recursion on the original state space.
+
+\subsection{Augmented-state formulation}
+\label{problem:augmentation}
+
+To make dynamic programming tractable, we introduce an augmented state, according to \cite{bauerle-2011}:
+\begin{equation}
+	y_t = \sum_{s=0}^{t-1} c_s(x_s, a_s) - \eta,
+	\label{augmented-state-sum}
+\end{equation}
+or, equivalently,
+\begin{equation}
+	y_{t+1} = y_t + c_t(x_t, a_t), \quad y_0 = -\eta
+	\label{augmented-state-recursive}
+\end{equation}
+
+The terminal value function then becomes
+\begin{equation}
+	V_T(x, y) = (y + c_T(x))_+.
+	\label{value-function-terminal}
+\end{equation}
+
+For $t<T$, we can define
+\begin{equation}
+	Q_t(x, y, a) = \EE \left[ V_{t+1} \left( x_{t+1}, y_{t+1} \right) \mid x_t = x, y_t = y, a_t = a \right]
+	\label{q-function}
+\end{equation}
+
+and
+\begin{equation}
+	V_t(x, y) = \min_{a \in \A} Q_t(x, y, a).
+	\label{value-function}
+\end{equation}
+
+The optimal fixed-$\eta$ value for the entire horizon is therefore
+\begin{equation}
+	V_0(x_0,-\eta).
+	\label{root-value}
+\end{equation}
+
+The corresponding complete AVaR objective is
+\begin{equation}
+	J(\eta) = \eta + \frac{1}{1-\alpha} V_0(x_0,-\eta),
+	\label{root-avar}
+\end{equation}
+and
+\begin{equation}
+	\eta^\star \in \arg\min_{\eta} J(\eta).
+	\notag
+	\label{optimal-eta}
+\end{equation}
+
+\subsection{Risk-neutral region of the augmented state space}
+\label{problem:rn-region}
+
+Once $y_t \geq 0$ at some time step $t$, under nonnegative stage and terminal costs,
+\begin{equation}
+	y_s = \underbrace{y_t}_{\geq 0} + \sum_{u=t}^{s-1} \underbrace{c_u(x_u, a_u)}_{\geq 0}, \quad t < s \leq T
+	\notag
+	\label{positive-augmented}
+\end{equation}
+
+Thus, the ramp function $(\cdot)_+$ does not change the objective of the optimization, meaning that
+\begin{equation}
+	Q_t(x, y, a) = y + Q_t^{\text{RN}}(x, a),
+	\label{q-func-using-rn}
+\end{equation}
+and the optimal action remains identical
+\begin{equation}
+	\arg\min_{a \in \A} Q_t(x, y, a) = \arg\min_{a \in \A} Q_t^{\text{RN}}(x, a),
+	\label{q-func-rn-argmin}
+\end{equation}
+where $Q_t^{\text{RN}}$ is a risk-neutral Q-function corresponding to the following control optimization problem
+\begin{equation}
+	Q_t^{\text{RN}}(x, a) = c_t(x, a) + \EE \left[ V_{t+1}^{\text{RN}} (x_{t+1}) \mid x_t = x, a_t = a \right],
+	\label{q-rn-bellman}
+\end{equation}
+and
+\begin{equation}
+	V_t^{\text{RN}}(x) = \min_{a \in \A} Q_t^{\text{RN}}(x, a), \quad V_T^{\text{RN}}(x) = c_T(x).
+	\label{value-rn}
+\end{equation}
+
+\subsection{Risk-neutral Q-function approximation}
+\label{problem:rn-approximation}
+
+We approximate the risk-neutral Q-function using backward dynamic programming with regression. Starting from the terminal condition
+\begin{equation}
+	V_T^{\text{RN}}(x)=c_T(x),
+	\notag
+	\label{value-rn-terminal}
+\end{equation}
+
+the Q-function and its approximation at $t=T-1$ are given by
+\begin{equation}
+	\hat{Q}_{T-1}^{\text{RN}} \approx Q_{T-1}^{\text{RN}}(x,a) = c_{T-1}(x,a) + \EE \left[c_T(x_T) \mid x_{T-1} = x,a_{T-1} = a\right].
+	\notag
+	\label{q-rn-preterminal}
+\end{equation}
+
+The corresponding value function approximation is
+\begin{equation}
+	\hat V_{T-1}^{\text{RN}}(x) = \min_{a \in \A}\hat Q_{T-1}^{\text{RN}}(x,a).
+	\notag
+	\label{value-rn-preterminal}
+\end{equation}
+
+This approximation is then used to construct the Bellman targets at the preceding time step,
+\begin{equation}
+	\hat Q_t^{\text{RN}}(x,a) \approx c_t(x,a) + \EE \left[ \hat V_{t+1}^{\text{RN}}(x_{t+1}) \mid x_t=x,a_t=a \right],
+	\label{q-rn-approx-bellman}
+\end{equation}
+\begin{equation}
+	\hat{V}_t^{\text{RN}}(x) = \min_{a \in \A} \hat{Q}_t^{\text{RN}}(x, a).
+	\notag
+	\label{value-approx-bellman}
+\end{equation}
+
+The procedure is repeated backward from $t=T-1$ to $t=0$.
+
+\subsection{Computational challenge}
+\label{problem:challenge}
+
+The state augmentation allows us to use dynamic programming, making the problem tractable. However, the problem is now formulated over $\X \times \RR$, leaving us with two continuous states to handle. This makes the direct Bellman solution very expensive, especially as horizon and discretization increase.
+
+The risk-neutral region $y \geq 0$ reduces this difficulty by allowing us to use risk-neutral continuation approximations. The remaining $y < 0$ region still requires the calculation (or approximation) of the augmented-state value function.
+
+Under a limited computational budget, evaluating the Bellman operator uniformly across this region may be inefficient as different states have different effects on policy and resulting AVaR objective. This motivates the development of a sampling strategy that allocates Bellman evaluations to states where they are most relevant to the accuracy of the solution.

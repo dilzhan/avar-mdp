@@ -1,0 +1,60 @@
+\section{Probabilistic ADP}
+\label{app:prob-adp}
+
+\begin{algorithm}[H]
+	\caption{Probabilistic ADP}
+	\label{alg:prob-adp}
+	\begin{algorithmic}[1]
+		\Require Horizon $T$, initial state $x_0$, confidence level $\alpha$, threshold set $\mathcal{H}$, candidate sets $\mathcal{S}_t$, risk-neutral approximations $\hat{V}_t^{\text{RN}}$,
+		acquisition method $A_t$, Bellman-backup budgets $B_t$, initial sample size $N_{\text{init}}$, batch size $b$
+		\Ensure Approximate optimal threshold $\hat\eta$,
+		objective $\hat{J}(\hat{\eta})$, and policy $\hat{\pi}$
+		
+		\State Set $\hat{V}_T(x,y) \gets (y + c_T(x))_+$
+		
+		\If{$A_t$ uses reachability or tail relevance}
+		\State Generate rollouts under the risk-neutral policy using a reference threshold $\eta_{\text{ref}}$
+		\State Compute rollout-based acquisition scores
+		\EndIf
+		
+		\For{$t=T-1,\ldots,1$}
+		\State Set $n_t \gets \min\left\{ |\mathcal{S}_t|, \lfloor B_t/|\A|\rfloor \right\}$
+		
+		\If{$A_t$ is random sampling}
+		\State Select $n_t$ states randomly from $\mathcal{S}_t$
+		\Else
+		\State Select $\min(N_{\text{init}}, n_t)$ states randomly from $\mathcal{S}_t$
+		\EndIf
+		
+		\State Compute Bellman targets for all actions using \eqref{gp-bellman-target}
+		\State Fit one GP per action using the selected states
+		
+		\While{the number of selected states is less than $n_t$}
+		\State Compute $A_t(s)$ for all remaining candidates
+		\State Select up to $b$ states with the highest scores
+		\State Compute their Bellman targets for all actions
+		\State Add the new observations to the training data
+		\State Refit the GP models
+		\EndWhile
+		
+		\State Construct $\hat{V}_t$ using
+		\eqref{gp-value-policy} for $y<0$
+		and risk-neutral continuation for $y\geq0$
+		\EndFor
+		
+		\For{$\eta \in \mathcal{H}$}
+		\State Compute $\hat{Q}_0(x_0, -\eta, a)$
+		for all $a \in \A$ using the Bellman operator
+		\State $\hat V_0(x_0, -\eta)
+		\gets \min_{a \in \A} \hat{Q}_0(x_0, -\eta, a)$
+		\State $\hat{J}(\eta)
+		\gets \eta + \frac{1}{1 - \alpha} \hat{V}_0(x_0, -\eta)$
+		\EndFor
+		
+		\State $\hat\eta
+		\gets \arg\min_{\eta \in \mathcal{H}} \hat{J}(\eta)$
+		\State Construct $\hat{\pi}$ using the minimizing root action, GP policies for $y<0$, and risk-neutral policies for $y\geq0$
+		
+		\State \Return $\hat{\eta},\hat{J}(\hat{\eta}),\hat{\pi}$
+	\end{algorithmic}
+\end{algorithm}

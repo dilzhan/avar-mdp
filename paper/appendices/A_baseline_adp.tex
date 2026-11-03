@@ -1,0 +1,76 @@
+\section{Baseline ADP}
+\label{app:baseline-adp}
+
+\begin{algorithm}[H]
+	\caption{Baseline ADP}
+	\label{alg:baseline-adp}
+	\begin{algorithmic}[1]
+		\Require Initial state $x_0$, threshold $\eta$,
+		number of episodes $K$, number of initialization rollouts $N$.
+		\Ensure Cache $\mathcal{C}$.
+		\State Initialize cache $\mathcal{C} \gets \varnothing$
+		
+		\For{$k = 1, \ldots, K$}
+		\State $(x,y) \gets (x_0,-\eta)$
+		
+		\For{$t = 0, \ldots, T-1$}
+		\State $s \gets (t, \operatorname{Round}(x, y))$
+		\For{$a \in \mathcal{A}$}
+		\State $\displaystyle q(a) \gets
+		\sum_{i} w_i
+		\Call{Value}{
+			t+1,
+			f_t(x,a,\xi^{(i)}),
+			y+c_t(x,a)
+		}$
+		\EndFor
+		
+		\State $\displaystyle a_t \gets
+		\arg\min_{a \in \mathcal{A}} q(a)$
+		
+		\If{$y < 0$}
+		\State $\displaystyle \mathcal{C}[s]
+		\gets \min_{a \in \mathcal{A}} q(a)$
+		\EndIf
+		
+		\State Sample $\xi_t$ from $\Xi$ with probabilities $w_i$
+		\State $y \gets y+c_t(x,a_t)$
+		\State $x \gets f_t(x,a_t,\xi_t)$
+		\EndFor
+		\EndFor
+		
+		\State \Return $\mathcal{C}$
+		
+		\Statex
+		
+		\Function{Value}{$t,x,y$}
+		\If{$t=T$}
+		\State \Return $(y+c_T(x))_+$
+		\EndIf
+		
+		\If{$y \geq 0$}
+		\State \Return $y+\hat V_t^{\text{RN}}(x)$
+		\EndIf
+		
+		\State $s \gets (t,\operatorname{Round}(x,y))$
+		
+		\If{$s \notin \mathcal{C}$}
+		\State $\mathcal{C}[s] \gets
+		\Call{Initialize}{t,x,y,N}$
+		\EndIf
+		
+		\State \Return $\mathcal{C}[s]$
+		\EndFunction
+	\end{algorithmic}
+\end{algorithm}
+
+Here, $\Xi = \{\xi^{(i)}\}_{i=0}^{N_{\xi}}$ is the discretized noise range, and $w_i$ are the corresponding normalized probability weights $w_i = \frac{p_{\xi}(\xi^{(i)})}{\sum_j p_{\xi}(\xi^{(j)})}$.
+
+The resulting policy for a state $s$ can be obtained via lines 6-9 of the algorithm.
+
+The operator $\operatorname{Round}(x,y)$ rounds both state
+components to six decimal places to construct cache keys,
+without modifying the actual states.
+Finally, $\operatorname{Initialize}(t,x,y,N)$ denotes the
+policy-based value initialization using $N$ Monte Carlo
+rollouts described in the methodology section.
