@@ -1,0 +1,7 @@
+{
+  "python": "3.11.13",
+  "pandas": "3.0.5",
+  "jax": "0.10.2",
+  "jax_precision": "float64",
+  "jax_backend": "cpu"
+}
